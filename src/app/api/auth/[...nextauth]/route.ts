@@ -1,49 +1,62 @@
 import NextAuth from "next-auth/next";
 
-export const authOptions = {
-   providers : [
-  //  {
-  //     id: 'auth0',
-  //     name: 'auth0',
-  //     type: 'oauth' as const,
-  //     version: '2.0',
-  //     scope: 'profile openid email',
-  //     params: { grant_type: 'authorization_code' },
-  //     accessTokenUrl: process.env.IdentityServer4_Issuer + '/connect/token',
-  //     requestTokenUrl: process.env.IdentityServer4_Issuer + '/connect/token',
-  //     authorizationUrl: process.env.IdentityServer4_Issuer + '/connect/authorize?response_type=code id_token',
-  //     profileUrl: process.env.IdentityServer4_Issuer + '/connect/userinfo',
-  //     profile: (profile: any) => {
-  //       return {
-  //         id: profile.sub,
-  //         name: profile.name,
-  //         email: profile.email,
-  //       }
-  //     },
-  //     clientId: process.env.IdentityServer4_CLIENT_ID,
-  //     clientSecret: process.env.IdentityServer4_CLIENT_SECRET
-  //   },
-      {
-        id: "auth0",
-        name: "auth0",
-        type: "oauth" as const,
-        wellKnown: "https://csnkarthik.auth0.com/.well-known/openid-configuration",
-        authorization: { params: { scope: "openid email profile" } },
-        idToken: true,
-        //checks: ["pkce", "state"],
-        profile(profile: any) {
-          return {
-            id: profile.sub,
-            name: profile.name,
-            email: profile.email          
-          }
+export default async function handler(req, res) {
+  const providers = [
+    {
+      id: "wynnlogin",
+      name: "wynnLogin",
+      type: "oauth" as const,
+      wellKnown: "https://login-intg.wynntesting.com/.well-known/openid-configuration",
+      authorization: {
+        url: "https://login-intg.wynntesting.com/connect/authorize",
+        params: {
+          scope: "openid",
+          redirect_uri: "http://localhost:31234/api/auth/callback/wynnlogin",
+          response_type: "code id_token",
+          nonce: Math.random().toString(36).substring(7),
+          grant_type: "authorization_code",
         },
-        clientId: process.env.IdentityServer4_CLIENT_ID,
-        clientSecret: process.env.IdentityServer4_CLIENT_SECRET
-      }
-   ]
-};
+      },
+      idToken: true,
+      //  checks: ["pkce", "state"],
+      profile(profile: any) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+        };
+      },
+      clientId: process.env.WynnLogin_CLIENT_ID,
+      clientSecret: process.env.WynnLogin_CLIENT_SECRET,
+    },
+    {
+      id: "auth0",
+      name: "auth0",
+      type: "oauth" as const,
+      wellKnown: "https://csnkarthik.auth0.com/.well-known/openid-configuration",
+      authorization: { params: { scope: "openid email profile" } },
+      idToken: true,
+      //checks: ["pkce", "state"],
+      profile(profile: any) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+        };
+      },
+      clientId: process.env.IdentityServer4_CLIENT_ID,
+      clientSecret: process.env.IdentityServer4_CLIENT_SECRET,
+    },
+  ];
+  for (const key in req) {
+    console.log(`${key}:`, req[key], "nextAUTH- request");
+  }
+  for (const key in res) {
+    console.log(`${key}:`, res[key], "nextAUTH - response");
+  }
+  return await NextAuth(req, res, {
+    providers,
+  });
+}
 
-const handler = NextAuth(authOptions)
-
-export  {handler as GET, handler as POST}
+export { handler as GET, handler as POST };
