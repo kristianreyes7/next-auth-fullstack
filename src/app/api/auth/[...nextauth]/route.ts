@@ -1,62 +1,114 @@
+import { AuthOptions, NextAuthOptions, Session, TokenSet } from "next-auth";
+import { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth/next";
+import IdentityServer4Provider from "next-auth/providers/identity-server4";
 
-export default async function handler(req, res) {
-  const providers = [
-    {
+export const authOptions: AuthOptions = {
+  providers: [
+    IdentityServer4Provider({
       id: "wynnlogin",
-      name: "wynnLogin",
-      type: "oauth" as const,
-      wellKnown: "https://login-intg.wynntesting.com/.well-known/openid-configuration",
+      name: "wynnlogin",
+      issuer: process.env.IdentityServer4_Issuer,
+      clientId: process.env.IdentityServer4_CLIENT_ID,
+      clientSecret: process.env.IdentityServer4_CLIENT_SECRET,
+      wellKnown:
+        "https://login-intg.wynntesting.com/.well-known/openid-configuration",
+      idToken: true,
+      checks: ["none"],
       authorization: {
-        url: "https://login-intg.wynntesting.com/connect/authorize",
         params: {
-          scope: "openid",
+          scope: "openid profile",
           redirect_uri: "http://localhost:31234/api/auth/callback/wynnlogin",
           response_type: "code id_token",
           nonce: Math.random().toString(36).substring(7),
-          grant_type: "authorization_code",
+          response_mode: "form_post",
         },
       },
-      idToken: true,
-      //  checks: ["pkce", "state"],
-      profile(profile: any) {
+      token: {
+        async request(context: any) {
+          const formBody = createFormBody({
+            redirect_uri: `http://localhost:31234/api/auth/callback/wynnlogin`,
+            client_id: process.env.IdentityServer4_CLIENT_ID ?? "",
+            client_secret: process.env.IdentityServer4_CLIENT_SECRET ?? "",
+            code: context.params.code,
+            grant_type: "authorization_code",
+          });
+
+          const tokensResponse = await fetch(
+            "https://login-intg.wynntesting.com/connect/token",
+            {
+              method: "POST",
+              body: formBody.toString(),
+              headers: {
+                "Content-type": "application/x-www-form-urlencoded",
+              },
+            }
+          );
+
+          const response = async (): Promise<TokenSet> => {
+            const token = await tokensResponse.json();
+            return {
+              access_token: token.access_token,
+              refresh_token: token.refresh_token,
+              id_token: token.id_token,
+              token_type: token.token_type,
+              expires_in: token.expires_in,
+            };
+          };
+          const tokens = await response();
+          return { tokens };
+        },
+      },
+      userinfo: {
+        async request(context: any) {
+          const userResponse = await fetch(
+            "https://login-intg.wynntesting.com/connect/userinfo",
+            {
+              headers: {
+                Authorization: `Bearer ${context.tokens.access_token}`,
+              },
+            }
+          );
+          const profile = await userResponse.json();
+          return profile;
+        },
+      },
+      profile(profile, tokens) {
         return {
           id: profile.sub,
           name: profile.name,
           email: profile.email,
+          image: profile.picture,
         };
       },
-      clientId: process.env.WynnLogin_CLIENT_ID,
-      clientSecret: process.env.WynnLogin_CLIENT_SECRET,
+    }),
+  ],
+  callbacks: {
+    async jwt({ token, user, trigger, session, profile }) {
+      if (trigger == "update") {
+        return { ...token, ...session.user, ...profile };
+      }
+      return { ...token, ...user, ...profile };
     },
-    {
-      id: "auth0",
-      name: "auth0",
-      type: "oauth" as const,
-      wellKnown: "https://csnkarthik.auth0.com/.well-known/openid-configuration",
-      authorization: { params: { scope: "openid email profile" } },
-      idToken: true,
-      //checks: ["pkce", "state"],
-      profile(profile: any) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-        };
-      },
-      clientId: process.env.IdentityServer4_CLIENT_ID,
-      clientSecret: process.env.IdentityServer4_CLIENT_SECRET,
+    async session({ session, token }: { session: Session; token: JWT }) {
+      session.user = token;
+      return session;
     },
-  ];
-  for (const key in req) {
-    console.log(`${key}:`, req[key], "nextAUTH- request");
-  }
-  for (const key in res) {
-    console.log(`${key}:`, res[key], "nextAUTH - response");
-  }
-  return await NextAuth(req, res, {
-    providers,
-  });
-}
+  },
+};
+
+const handler = NextAuth({ ...authOptions } satisfies NextAuthOptions);
 
 export { handler as GET, handler as POST };
+
+function createFormBody<T extends Record<string, string | number>>(
+  params: T
+): string {
+  const formBody = Object.entries(params)
+    .map(
+      ([key, value]) =>
+        `${encodeURIComponent(key)}=${encodeURIComponent(value.toString())}`
+    )
+    .join("&");
+  return formBody;
+}
