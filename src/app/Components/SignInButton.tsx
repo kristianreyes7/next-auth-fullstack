@@ -8,7 +8,6 @@ const SignInButton = () => {
       {session ? (
         <button
           onClick={() => {
-            signOut();
             window.location.href = "/api/auth/signout";
           }}
         >

@@ -2,6 +2,8 @@ import { AuthOptions, NextAuthOptions, Session, TokenSet } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth/next";
 import IdentityServer4Provider from "next-auth/providers/identity-server4";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -88,10 +90,6 @@ export const authOptions: AuthOptions = {
     async session({ session, token }: { session: Session; token: JWT }) {
       session.user = token;
       return session;
-    },
-    async redirect({ url, baseUrl }) {
-      console.log({ url, baseUrl });
-      return url;
     },
   },
 };
