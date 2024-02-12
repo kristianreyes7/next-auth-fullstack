@@ -2,6 +2,7 @@ import { AuthOptions, NextAuthOptions, Session, TokenSet } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth/next";
 import IdentityServer4Provider from "next-auth/providers/identity-server4";
+import federatedLogout from "../federatedLogout";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -11,14 +12,13 @@ export const authOptions: AuthOptions = {
       issuer: process.env.IdentityServer4_Issuer,
       clientId: process.env.IdentityServer4_CLIENT_ID,
       clientSecret: process.env.IdentityServer4_CLIENT_SECRET,
-      wellKnown:
-        "https://login-intg.wynntesting.com/.well-known/openid-configuration",
+      wellKnown: `${process.env.PROVIDER_DOMAIN}/.well-known/openid-configuration`,
       idToken: true,
       checks: ["none"],
       authorization: {
         params: {
           scope: "openid profile",
-          redirect_uri: "http://localhost:31234/api/auth/callback/wynnlogin",
+          redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/wynnlogin`,
           response_type: "code id_token",
           nonce: Math.random().toString(36).substring(7),
           response_mode: "form_post",
@@ -27,23 +27,20 @@ export const authOptions: AuthOptions = {
       token: {
         async request(context: any) {
           const formBody = createFormBody({
-            redirect_uri: `http://localhost:31234/api/auth/callback/wynnlogin`,
+            redirect_uri: `${process.env.NEXTAUTH_URL}/api/auth/callback/wynnlogin`,
             client_id: process.env.IdentityServer4_CLIENT_ID ?? "",
             client_secret: process.env.IdentityServer4_CLIENT_SECRET ?? "",
             code: context.params.code,
             grant_type: "authorization_code",
           });
 
-          const tokensResponse = await fetch(
-            "https://login-intg.wynntesting.com/connect/token",
-            {
-              method: "POST",
-              body: formBody.toString(),
-              headers: {
-                "Content-type": "application/x-www-form-urlencoded",
-              },
-            }
-          );
+          const tokensResponse = await fetch(`${process.env.PROVIDER_DOMAIN}/connect/token`, {
+            method: "POST",
+            body: formBody.toString(),
+            headers: {
+              "Content-type": "application/x-www-form-urlencoded",
+            },
+          });
 
           const response = async (): Promise<TokenSet> => {
             const token = await tokensResponse.json();
@@ -61,14 +58,11 @@ export const authOptions: AuthOptions = {
       },
       userinfo: {
         async request(context: any) {
-          const userResponse = await fetch(
-            "https://login-intg.wynntesting.com/connect/userinfo",
-            {
-              headers: {
-                Authorization: `Bearer ${context.tokens.access_token}`,
-              },
-            }
-          );
+          const userResponse = await fetch(`${process.env.PROVIDER_DOMAIN}/connect/userinfo`, {
+            headers: {
+              Authorization: `Bearer ${context.tokens.access_token}`,
+            },
+          });
           const profile = await userResponse.json();
           return profile;
         },
@@ -78,6 +72,7 @@ export const authOptions: AuthOptions = {
           id: profile.sub,
           name: profile.name,
           email: profile.email,
+
           image: profile.picture,
         };
       },
@@ -94,6 +89,14 @@ export const authOptions: AuthOptions = {
       session.user = token;
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith(baseUrl)) return url;
+      if (url === "signOut") {
+        await fetch(`${process.env.NEXTAUTH_URL}/api/auth/federated-logout`);
+      }
+      if (url.startsWith("/")) return new URL(url, baseUrl).toString();
+      return baseUrl;
+    },
   },
 };
 
@@ -101,14 +104,9 @@ const handler = NextAuth({ ...authOptions } satisfies NextAuthOptions);
 
 export { handler as GET, handler as POST };
 
-function createFormBody<T extends Record<string, string | number>>(
-  params: T
-): string {
+function createFormBody<T extends Record<string, string | number>>(params: T): string {
   const formBody = Object.entries(params)
-    .map(
-      ([key, value]) =>
-        `${encodeURIComponent(key)}=${encodeURIComponent(value.toString())}`
-    )
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value.toString())}`)
     .join("&");
   return formBody;
 }
