@@ -1,6 +1,6 @@
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions";
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
-import { authOptions } from "../../api/auth/[...nextauth]/route";
 
 const ServerProtectedPage = async () => {
   const session = await getServerSession(authOptions);

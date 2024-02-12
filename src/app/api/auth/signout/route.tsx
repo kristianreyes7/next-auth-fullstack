@@ -10,17 +10,22 @@ export async function handler(req: NextRequest, res: NextResponse) {
       return NextResponse.redirect(process.env.NEXTAUTH_URL ?? "");
     }
     if (!token.id_token) console.warn("Without an id_token the user won't be redirected back from the IdP after logout.");
-    const endsessionURL = `${process.env.PROVIDER_DOMAIN}/connect/endsession`;
-    const endsessionParams = new URLSearchParams({
-      id_token_hint: token.id_token,
-      post_logout_redirect_uri: `${process.env.NEXTAUTH_URL}/Home/OidcSignOutCallback`,
-    } as { [key: string]: string });
-    // Clear the session token cookie
-    cookies().delete("next-auth.session-token");
-    return NextResponse.redirect(`${endsessionURL}?${endsessionParams}`);
+
+    return NextResponse.redirect(
+      new URL(
+        `${process.env.PROVIDER_DOMAIN}/connect/endsession?${new URLSearchParams({
+          id_token_hint: token.id_token as string,
+          post_logout_redirect_uri: `${process.env.NEXTAUTH_URL}/Home/OidcSignOutCallback`,
+        }).toString()}`
+      ).toString()
+    );
   } catch (error) {
     console.error(error);
     NextResponse.redirect(process.env.NEXTAUTH_URL ?? "");
+  } finally {
+    // Clear the session token cookie to signout user
+    cookies().delete("next-auth.session-token");
+    cookies().delete("next-auth.csrf-token");
   }
 }
 

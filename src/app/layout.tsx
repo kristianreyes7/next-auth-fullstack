@@ -4,7 +4,7 @@ import Footer from "./Components/Footer";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { getServerSession } from "next-auth";
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "./api/auth/[...nextauth]/authOptions";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,10 +16,7 @@ export const metadata = {
 export default function RootLayout({ children }: any) {
   const session = getServerSession(authOptions);
   return (
-    <html
-      lang="en"
-      className={`${inter.className} h-full scroll-smooth antialiased`}
-    >
+    <html lang="en" className={`${inter.className} h-full scroll-smooth antialiased`}>
       <body className="flex h-full flex-col">
         <Provider session={session}>
           <Header />
