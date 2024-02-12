@@ -92,7 +92,7 @@ export const authOptions: AuthOptions = {
     async redirect({ url, baseUrl }) {
       if (url.startsWith(baseUrl)) return url;
       if (url === "signOut") {
-        await fetch(`${process.env.NEXTAUTH_URL}/api/auth/federated-logout`);
+        await fetch(`${process.env.NEXTAUTH_URL}/api/auth/federatedLogout`);
       }
       if (url.startsWith("/")) return new URL(url, baseUrl).toString();
       return baseUrl;

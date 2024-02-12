@@ -4,7 +4,6 @@ import jwt from "next-auth/jwt";
 import { redirect } from "next/navigation";
 
 export default async function GET(req: NextApiRequest, res: NextApiResponse) {
-  "use server";
   try {
     const token = await jwt.getToken({ req, secret: process.env.SECRET });
     if (!token) {
