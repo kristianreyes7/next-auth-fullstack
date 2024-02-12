@@ -2,7 +2,6 @@ import { AuthOptions, NextAuthOptions, Session, TokenSet } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import NextAuth from "next-auth/next";
 import IdentityServer4Provider from "next-auth/providers/identity-server4";
-import federatedLogout from "../federatedLogout";
 
 export const authOptions: AuthOptions = {
   providers: [
@@ -78,24 +77,21 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+
   callbacks: {
-    async jwt({ token, user, trigger, session, profile }) {
+    async jwt({ token, user, trigger, session, profile, account }) {
       if (trigger == "update") {
-        return { ...token, ...session.user, ...profile };
+        return { ...token, ...session.user, ...profile, ...account };
       }
-      return { ...token, ...user, ...profile };
+      return { ...token, ...user, ...profile, ...account };
     },
     async session({ session, token }: { session: Session; token: JWT }) {
       session.user = token;
       return session;
     },
     async redirect({ url, baseUrl }) {
-      if (url.startsWith(baseUrl)) return url;
-      if (url === "signOut") {
-        await fetch(`${process.env.NEXTAUTH_URL}/api/auth/federatedLogout`);
-      }
-      if (url.startsWith("/")) return new URL(url, baseUrl).toString();
-      return baseUrl;
+      console.log({ url, baseUrl });
+      return url;
     },
   },
 };
