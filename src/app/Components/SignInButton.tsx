@@ -14,7 +14,7 @@ const SignInButton = () => {
           <span>Sign Out</span>
         </button>
       ) : (
-        <button onClick={() => signIn("wynnlogin")}>Sign In</button>
+        <button onClick={() => signIn("wynnlogin", { redirect: true })}>Sign In</button>
       )}
     </>
   );

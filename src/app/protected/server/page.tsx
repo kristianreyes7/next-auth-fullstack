@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 const ServerProtectedPage = async () => {
   const session = await getServerSession(authOptions);
   if (!session) {
-    redirect("/api/auth/signin?callbackUrl=/protected/server");
+    redirect("/api/auth/signin?callbackUrl=/protected/server/", );
   }
 
   return (

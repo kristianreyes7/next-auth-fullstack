@@ -15,7 +15,7 @@ export async function handler(req: NextRequest, res: NextResponse) {
       new URL(
         `${process.env.PROVIDER_DOMAIN}/connect/endsession?${new URLSearchParams({
           id_token_hint: token.id_token as string,
-          post_logout_redirect_uri: `${process.env.NEXTAUTH_URL}/Home/OidcSignOutCallback`,
+          post_logout_redirect_uri: `http://localhost:31234`,
         }).toString()}`
       ).toString()
     );

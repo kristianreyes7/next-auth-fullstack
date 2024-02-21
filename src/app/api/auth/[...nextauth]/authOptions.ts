@@ -91,6 +91,21 @@ export const authOptions: AuthOptions = {
       },
     }),
   ],
+  session: {
+    strategy: "jwt",
+  },
+
+  cookies: {
+    callbackUrl: {
+      name: `next-auth.callback-url`,
+      options: {
+        sameSite: 'None',
+        path: '/',
+        secure: false,
+        // domain: ".wynntesting.com"
+      }
+    },
+  },
 
   callbacks: {
     async jwt({ token, user, trigger, session, profile, account }) {
@@ -103,5 +118,15 @@ export const authOptions: AuthOptions = {
       session.user = token;
       return session;
     },
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    }
   },
+  // pages: {
+  //   signIn: "/api/auth/signin"
+  // },
 };
